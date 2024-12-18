@@ -7,7 +7,8 @@
         "**/.build": true,
         "**/*.hex": true,
         "**/*.bin": true,
-        "**/*.uf2": true
+        "**/*.uf2": true,
+        "keyboards/**": true // Exclude all keyboards except the one in code-workspace
     },
     "files.associations": {
         // QMK Filetypes
