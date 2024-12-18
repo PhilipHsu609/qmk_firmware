@@ -7,7 +7,8 @@
         "**/.build": true,
         "**/*.hex": true,
         "**/*.bin": true,
-        "**/*.uf2": true
+        "**/*.uf2": true,
+        "keyboards/**": true // Exclude all keyboards except the one in code-workspace
     },
     "files.associations": {
         "*.h": "c",
@@ -28,7 +29,5 @@
     "[json]": {
         "editor.formatOnSave": false
     },
-    "clangd.arguments": [
-        "--header-insertion=never"
-    ]
+    "clangd.arguments": ["--header-insertion=never"]
 }
