@@ -16,10 +16,13 @@ enum custom_keycodes {
 };
 
 #define ADJ MO(_ADJUST)
-#define F_FKEYS LT(_FKEYS, KC_F)
+#define FKEYS MO(_FKEYS)
 
 #define WORD_L LALT(KC_LEFT)
 #define WORD_R LALT(KC_RGHT)
 
 #define LINE_L LGUI(KC_LEFT)
 #define LINE_R LGUI(KC_RGHT)
+
+#define CAP_SRN LGUI(LSFT(KC_3))
+#define CAP_IMG LGUI(LSFT(KC_4))
