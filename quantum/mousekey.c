@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 #include "keycode.h"
 #include "host.h"
 #include "timer.h"
@@ -46,8 +47,8 @@ static uint8_t        mousekey_wheel_repeat = 0;
 static uint8_t mousekey_frame     = 0; // track whether gesture is inactive, first frame, or repeating
 static int8_t  mousekey_x_dir     = 0; // -1 / 0 / 1 = left / neutral / right
 static int8_t  mousekey_y_dir     = 0; // -1 / 0 / 0 = up / neutral / down
-static int8_t  mousekey_x_inertia = 0; // current velocity, limit +/- MOUSEKEY_TIME_TO_MAX
-static int8_t  mousekey_y_inertia = 0; // ...
+static float   mousekey_x_inertia = 0; // current velocity, limit +/- MOUSEKEY_TIME_TO_MAX
+static float   mousekey_y_inertia = 0; // ...
 #endif
 #ifdef MK_KINETIC_SPEED
 static uint16_t mouse_timer = 0;
@@ -116,7 +117,8 @@ static int8_t move_unit(uint8_t axis) {
     int16_t unit;
 
     // handle X or Y axis
-    int8_t inertia, dir;
+    int8_t dir;
+    float  inertia;
     if (axis) {
         inertia = mousekey_y_inertia;
         dir     = mousekey_y_dir;
@@ -125,27 +127,14 @@ static int8_t move_unit(uint8_t axis) {
         dir     = mousekey_x_dir;
     }
 
+    int16_t base_move = dir * MOUSEKEY_MOVE_DELTA * 2;
+
     if (mousekey_frame < 2) { // first frame(s): initial keypress moves one pixel
         mousekey_frame = 1;
-        unit           = dir * MOUSEKEY_MOVE_DELTA;
+        unit           = base_move;
     } else { // acceleration
         // linear acceleration (is here for reference, but doesn't feel as good during use)
-        // unit = (MOUSEKEY_MOVE_DELTA * mk_max_speed * inertia) / mk_time_to_max;
-
-        // x**2 acceleration (quadratic, more precise for short movements)
-        int16_t percent = (inertia << 8) / mk_time_to_max;
-        percent         = ((int32_t)percent * percent) >> 8;
-        if (inertia < 0) percent = -percent;
-
-        // unit = sign(inertia) + (percent of max speed)
-        if (inertia > 0)
-            unit = 1;
-        else if (inertia < 0)
-            unit = -1;
-        else
-            unit = 0;
-
-        unit = unit + ((mk_max_speed * percent) >> 8);
+        unit = base_move + (MOUSEKEY_MOVE_DELTA * mk_max_speed * inertia / 2) / mk_time_to_max;
     }
 
     if (unit > MOUSEKEY_MOVE_MAX)
@@ -284,14 +273,14 @@ static uint8_t wheel_unit(void) {
 
 #    ifdef MOUSEKEY_INERTIA
 
-static int8_t calc_inertia(int8_t direction, int8_t velocity) {
+static int8_t calc_inertia(int8_t direction, float velocity) {
     // simulate acceleration and deceleration
 
     // deceleration
-    if ((direction > -1) && (velocity < 0))
-        velocity = (velocity + 1) * (256 - MOUSEKEY_FRICTION) / 256;
-    else if ((direction < 1) && (velocity > 0))
+    if (direction == 0 && velocity != 0)
         velocity = velocity * (256 - MOUSEKEY_FRICTION) / 256;
+    else if ((direction < 0 && velocity > 0) || (direction > 0 && velocity < 0))
+        velocity = velocity * (256 - 16) / 256;
 
     // acceleration
     if ((direction > 0) && (velocity < mk_time_to_max))
@@ -300,6 +289,19 @@ static int8_t calc_inertia(int8_t direction, int8_t velocity) {
         velocity--;
 
     return velocity;
+}
+
+static void apply_combined_inertia(float *vx, float *vy) {
+    float velocity_magnitude = sqrt((*vx) * (*vx) + (*vy) * (*vy));
+    float angle              = atan2(*vy, *vx);
+
+    float friction = 28;
+    if (velocity_magnitude > 0) {
+        velocity_magnitude = velocity_magnitude * (256 - friction) / 256;
+    }
+
+    *vx = (float)(velocity_magnitude * cos(angle));
+    *vy = (float)(velocity_magnitude * sin(angle));
 }
 
 #    endif
@@ -317,8 +319,12 @@ void mousekey_task(void) {
 
     // if an animation is in progress and it's time for the next frame
     if ((mousekey_frame) && timer_elapsed(last_timer_c) > ((mousekey_frame > 1) ? mk_interval : mk_delay * 10)) {
-        mousekey_x_inertia = calc_inertia(mousekey_x_dir, mousekey_x_inertia);
-        mousekey_y_inertia = calc_inertia(mousekey_y_dir, mousekey_y_inertia);
+        if (mousekey_x_dir == 0 && mousekey_y_dir == 0)
+            apply_combined_inertia(&mousekey_x_inertia, &mousekey_y_inertia);
+        else {
+            mousekey_x_inertia = calc_inertia(mousekey_x_dir, mousekey_x_inertia);
+            mousekey_y_inertia = calc_inertia(mousekey_y_dir, mousekey_y_inertia);
+        }
 
         mouse_report.x = move_unit(0);
         mouse_report.y = move_unit(1);
@@ -501,7 +507,7 @@ void mousekey_off(uint8_t code) {
 
 enum { mkspd_unmod, mkspd_0, mkspd_1, mkspd_2, mkspd_COUNT };
 #    ifndef MK_MOMENTARY_ACCEL
-static uint8_t  mk_speed                 = mkspd_1;
+static uint8_t mk_speed = mkspd_1;
 #    else
 static uint8_t mk_speed      = mkspd_unmod;
 static uint8_t mkspd_DEFAULT = mkspd_unmod;
