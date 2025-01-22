@@ -26,3 +26,7 @@ enum custom_keycodes {
 
 #define CAP_SRN LGUI(LSFT(KC_3))
 #define CAP_IMG LGUI(LSFT(KC_4))
+
+#define COPY LGUI(KC_C)
+#define PASTE LGUI(KC_V)
+#define CUT LGUI(KC_X)
