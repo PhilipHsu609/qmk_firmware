@@ -29,7 +29,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_VOLD, KC_VOLU, _______,
         _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_MPLY, KC_MPRV, KC_MNXT, _______,
         _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,          CAP_IMG,
-        _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,                   CAP_SRN,
+        _______, _______, _______, _______, _______, _______, _______, CG_TOGG, _______, _______, _______,                   CAP_SRN,
         QK_BOOT, _______, _______,                            _______,                            _______, _______, _______, _______
     )
 };
@@ -88,6 +88,9 @@ bool process_nav_scln(uint16_t keycode, keyrecord_t *record) {
         case LINE_R:
         case KC_LEFT:
         case KC_RGHT:
+        case CUT:
+        case COPY:
+        case PASTE:
             unregister_nav_scln_down_state();
             semicolon_nav_activated = 2;
             return true;
